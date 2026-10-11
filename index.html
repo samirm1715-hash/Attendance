@@ -157,21 +157,63 @@
       }
     }
 
-    async function handleLoginSubmit() {
-      const pwd = document.getElementById('loginPassword').value.trim();
-      const errEl = document.getElementById('loginError');
-      errEl.classList.add('hidden');
-      if (!pwd) return;
+    
+async function handleLoginSubmit() {
+  const passwordInput = document.getElementById('loginPassword');
+  const errEl = document.getElementById('loginError');
+  const button = document.querySelector('#loginCard button');
 
-      const res = await loginApi(pwd);
-      if (res.success) {
-        sessionStorage.setItem('userRole', res.role);
-        showAppUI(res.role);
-      } else {
-        errEl.innerText = res.message || "Invalid Passcode";
-        errEl.classList.remove('hidden');
-      }
+  const pwd = passwordInput.value.trim();
+
+  errEl.classList.add('hidden');
+  errEl.innerText = '';
+
+  if (!pwd) {
+    errEl.innerText = 'Please enter the system password.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  button.disabled = true;
+  button.innerText = 'Authenticating...';
+
+  try {
+    // Verify that the API function is available.
+    if (typeof loginApi !== 'function') {
+      throw new Error(
+        'Login API is unavailable. Check api-config.js.'
+      );
     }
+
+    const res = await loginApi(pwd);
+
+    console.log('Login API response:', res);
+
+    if (res && res.success) {
+      if (!res.role) {
+        throw new Error(
+          'Login succeeded, but no user role was returned.'
+        );
+      }
+
+      sessionStorage.setItem('userRole', res.role);
+      showAppUI(res.role);
+    } else {
+      errEl.innerText =
+        (res && res.message) || 'Invalid password or login failed.';
+      errEl.classList.remove('hidden');
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+
+    errEl.innerText =
+      error.message || 'Unable to log in. Please try again.';
+    errEl.classList.remove('hidden');
+  } finally {
+    button.disabled = false;
+    button.innerText = 'Unlock Portal';
+  }
+}
 
     function showAppUI(role) {
       document.getElementById('loginCard').classList.add('hidden');
