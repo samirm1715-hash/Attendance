@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzyyb2EZpK9DTrv0o60Zxcb5q3PIWRyZ_cM9WBHOdpr04GwE0DIyEVVWiC_HqgLydY0/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxXfZNSQ2BsVoSHDCoRZ9TX7fOst_iUmwc-OkO0LoVPancEIZjw-dbMxfDki7JEBFFt/exec";
 const API_KEY = "SUPER_SECRET_API_KEY_12345"; // Must match Code.gs API_KEY
 
 
