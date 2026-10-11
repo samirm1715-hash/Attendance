@@ -222,11 +222,17 @@ async function handleLoginSubmit() {
       startCamera();
     }
 
-    function logout() {
-      stopCamera();
-      sessionStorage.clear();
-      window.location.reload();
-    }
+    
+async function logout() {
+  await logoutApi();
+  await stopCamera();
+
+  sessionStorage.removeItem("sessionToken");
+  sessionStorage.removeItem("userRole");
+
+  window.location.reload();
+}
+
 
     async function startCamera() {
       const status = document.getElementById("cameraStatus");
