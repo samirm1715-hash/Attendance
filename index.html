@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan QR - Attendance</title>
+  <style>
+    /* Compact, responsive square scanner for phones, tablets and desktops. */
+    #reader {
+      width: min(100%, 280px) !important;
+      max-width: 280px;
+      aspect-ratio: 1 / 1;
+      margin-inline: auto;
+      border: 3px solid #c7d2fe;
+      border-radius: 16px;
+      background: #0f172a;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+    }
+    #reader video {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+    #reader img { max-width: 100%; }
+    @media (max-width: 380px) {
+      #reader { width: min(100%, 240px) !important; }
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="api-config.js?v=400"></script>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 flex flex-col items-center justify-center">
+
+  <!-- LOGIN SECTION -->
+  <div id="loginCard" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 space-y-4">
+    <div class="text-center">
+      <h1 class="text-2xl font-bold text-slate-800">System Login</h1>
+      <p class="text-xs text-slate-500 mt-1">Authenticate to access Attendance Portal</p>
+    </div>
+
+    <div class="space-y-3 pt-2">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Passcode</label>
+        <input type="password" id="loginPassword" placeholder="Enter system password" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+      </div>
+      <button onclick="handleLoginSubmit()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition shadow-md">
+        Unlock Portal
+      </button>
+    </div>
+    <p id="loginError" class="text-xs text-red-500 text-center hidden"></p>
+  </div>
+
+  <!-- MAIN APP SECTION -->
+  <div id="appSection" class="hidden w-full max-w-md bg-white rounded-2xl shadow-xl p-5 space-y-4 my-2">
+    <div class="flex justify-between items-center border-b pb-3">
+      <div>
+        <h1 class="text-lg font-bold text-slate-800">QR Attendance</h1>
+        <p id="userRoleBadge" class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider"></p>
+      </div>
+      <button onclick="logout()" class="text-xs text-red-500 font-semibold hover:underline">Logout</button>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold text-center">
+      <a href="index.html" class="py-2.5 rounded-lg text-white bg-indigo-600">Scan QR</a>
+      <a href="find.html" class="py-2.5 rounded-lg text-slate-600 hover:text-slate-900">Find Student</a>
+      <a href="register.html" class="py-2.5 rounded-lg text-slate-600 hover:text-slate-900">New Reg</a>
+    </nav>
+
+    <!-- Scan View Content -->
+    <div class="space-y-3">
+      <div id="reader" class="w-full aspect-square bg-black rounded-xl overflow-hidden" aria-label="QR code camera scanner"></div>
+      <p id="cameraStatus" class="text-xs text-center text-slate-400">Initializing camera scanner...</p>
+    </div>
+
+    <!-- Student Details Result Card (Auto-Dismissing Kiosk Mode) -->
+    <div id="resultCard" class="hidden border-2 rounded-2xl p-5 space-y-3 transition-all duration-300">
+      <div class="flex justify-between items-center">
+        <span id="cardClassBadge" class="text-xs font-bold px-3 py-1 rounded-full text-white shadow-sm">Class</span>
+        <span id="cardId" class="text-xs font-mono font-bold opacity-75">ID</span>
+      </div>
+      <div>
+        <h3 id="cardName" class="text-xl font-extrabold text-slate-900">First Last</h3>
+        <p id="cardClassText" class="text-xs font-semibold opacity-80 mt-0.5">Class Name</p>
+      </div>
+      <p class="text-center text-xs font-bold text-emerald-600 pt-1">Attendance Logged Automatically ✓</p>
+    </div>
+
+    <div id="alertBanner" class="hidden p-3 rounded-xl text-xs text-center font-semibold"></div>
+  </div>
+
+  <script>
+    let html5QrCode = null;
+    let studentCache = {};
+    let isCacheLoaded = false;
+    let isProcessingScan = false;
+
+    function getClassColor(className) {
+      if (!className) return '#5f6368';
+      
+      const name = String(className).toLowerCase().replace(/[^a-z0-9\+\-\s]/g, '').trim();
+
+      if (name.includes('1c') || name.includes('12+') || name.includes('part 1 c')) return '#000000'; // Black
+      if (name.includes('part 1b') || name.includes('7+')) return '#ff69b4'; // Pink
+      if (name.includes('part 1a') || name.includes('4-6') || name.includes('4 - 6')) return '#d93025'; // Red
+      if (name.includes('below 4')) return '#1a73e8'; // Blue
+      if (name.includes('part 2')) return '#ff8c00'; // Orange
+      if (name.includes('part 3')) return '#800080'; // Purple
+      if (name.includes('part 4') || name.includes('part 5') || name.includes('4-5') || name.includes('4 - 5')) return '#0d652d'; // Green
+      if (name.includes('part 6')) return '#fbbc04'; // Yellow
+      if (name.includes('pronounciation') || name.includes('pronunciation')) return '#8b4513'; // Brown
+      
+      return '#5f6368';
+    }
+
+    function hexToRgba(hex, alpha) {
+      const cleanHex = (hex || '#5f6368').replace('#', '');
+      const r = parseInt(cleanHex.substring(0, 2), 16) || 95;
+      const g = parseInt(cleanHex.substring(2, 4), 16) || 99;
+      const b = parseInt(cleanHex.substring(4, 6), 16) || 104;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+      
+    window.addEventListener('DOMContentLoaded', () => {
+      preloadStudentRoster();
+      const sessionRole = sessionStorage.getItem('userRole');
+      if (sessionRole) showAppUI(sessionRole);
+    });
+
+    async function preloadStudentRoster() {
+      document.getElementById('cameraStatus').innerText = "Syncing student roster...";
+      try {
+        const res = await searchStudentsApi({ id: "" });
+        if (res.success && res.students) {
+          studentCache = {};
+          res.students.forEach(student => {
+            const cleanId = String(student.id).trim().toUpperCase();
+            studentCache[cleanId] = student;
+          });
+          isCacheLoaded = true;
+          document.getElementById('cameraStatus').innerText = "Camera scanner ready";
+        }
+      } catch (e) {
+        document.getElementById('cameraStatus').innerText = "Camera scanner ready";
+      }
+    }
+
+    async function handleLoginSubmit() {
+      const pwd = document.getElementById('loginPassword').value.trim();
+      const errEl = document.getElementById('loginError');
+      errEl.classList.add('hidden');
+      if (!pwd) return;
+
+      const res = await loginApi(pwd);
+      if (res.success) {
+        sessionStorage.setItem('userRole', res.role);
+        showAppUI(res.role);
+      } else {
+        errEl.innerText = res.message || "Invalid Passcode";
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    function showAppUI(role) {
+      document.getElementById('loginCard').classList.add('hidden');
+      document.getElementById('appSection').classList.remove('hidden');
+      document.getElementById('userRoleBadge').innerText = `Session: ${role}`;
+      startCamera();
+    }
+
+    function logout() {
+      stopCamera();
+      sessionStorage.clear();
+      window.location.reload();
+    }
+
+    async function startCamera() {
+      const status = document.getElementById("cameraStatus");
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        status.innerText = "Camera scanning requires a supported browser and HTTPS connection.";
+        return;
+      }
+
+      if (!html5QrCode) {
+        const formats = (typeof Html5QrcodeSupportedFormats !== "undefined")
+          ? [Html5QrcodeSupportedFormats.QR_CODE]
+          : undefined;
+        html5QrCode = new Html5Qrcode("reader", formats ? { formatsToSupport: formats, verbose: false } : { verbose: false });
+      }
+
+      // Scale the scan target to the actual viewport; keep it square and usable on small phones.
+      const config = {
+        fps: 15,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight, 220) * 0.78);
+          return { width: edge, height: edge };
+        },
+        aspectRatio: 1.0,
+        rememberLastUsedCamera: true
+      };
+
+      try {
+        await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, () => {});
+        status.innerText = "Scanning active — hold the QR code inside the square.";
+      } catch (rearError) {
+        try {
+          await html5QrCode.start({ facingMode: "user" }, config, onScanSuccess, () => {});
+          status.innerText = "Using front camera — scanning active.";
+        } catch (frontError) {
+          console.error("Unable to start camera:", frontError);
+          status.innerText = "Camera unavailable. Allow camera access and open this page over HTTPS.";
+        }
+      }
+    }
+
+    async function stopCamera() {
+      if (html5QrCode && html5QrCode.isScanning) {
+        try {
+          await html5QrCode.stop();
+        } catch (e) {}
+      }
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+      if (isProcessingScan) return;
+      isProcessingScan = true;
+
+      console.log(`QR Code matched = ${decodedText}`);
+      
+      if (html5QrCode) html5QrCode.pause();
+      document.getElementById('cameraStatus').innerText = "Processing attendance...";
+      
+      fetchAndAutoMark(decodedText.trim());
+    }
+
+    async function fetchAndAutoMark(scannedId) {
+      const cleanId = String(scannedId).trim().toUpperCase();
+      let student = null;
+
+      if (isCacheLoaded && studentCache[cleanId]) {
+        student = studentCache[cleanId];
+      } else {
+        try {
+          const res = await searchStudentsApi({ id: cleanId });
+          if (res.success && res.students && res.students.length > 0) {
+            student = res.students[0];
+          }
+        } catch (err) {
+          console.error("Student search failed:", err);
+        }
+      }
+
+      if (!student) {
+        showAlert("Student ID not found in roster.", "red");
+        setTimeout(() => {
+          showAlert("", "hide");
+          isProcessingScan = false;
+          if (html5QrCode) html5QrCode.resume();
+          document.getElementById('cameraStatus').innerText = "Scanning active...";
+        }, 1500);
+        return;
+      }
+
+      // Display student details card
+      applyStudentCardTheme(student);
+      showAlert(`✓ Marked Present: ${student.firstName} ${student.lastName}`, "green");
+
+      // Fire background attendance record
+      markAttendance(student).catch(err => {
+        console.error("Background attendance sync error:", err);
+      });
+
+      // Auto-dismiss card and resume scanning after 1.2 seconds
+      setTimeout(() => {
+        document.getElementById('resultCard').classList.add('hidden');
+        showAlert("", "hide");
+        isProcessingScan = false;
+        if (html5QrCode) html5QrCode.resume();
+        document.getElementById('cameraStatus').innerText = "Scanning active...";
+      }, 2250);
+    }
+
+    function applyStudentCardTheme(student) {
+      const card = document.getElementById('resultCard');
+      const className = student.className || student.class || 'Class';
+      const hexColor = getClassColor(className);
+
+      document.getElementById('cardName').innerText = `${student.firstName} ${student.lastName}`;
+      document.getElementById('cardId').innerText = `ID: ${student.id}`;
+      document.getElementById('cardClassText').innerText = className;
+
+      const badge = document.getElementById('cardClassBadge');
+      badge.innerText = className;
+      badge.style.setProperty('background-color', hexColor, 'important');
+      badge.style.setProperty('color', hexColor === '#fbbc04' ? '#000000' : '#ffffff', 'important');
+
+      card.style.backgroundColor = hexToRgba(hexColor, 0.12);
+      card.style.borderColor = hexColor;
+      card.classList.remove('hidden');
+    }
+
+    function showAlert(msg, type) {
+      const banner = document.getElementById('alertBanner');
+      if (type === "hide") {
+        banner.classList.add('hidden');
+        return;
+      }
+
+      banner.classList.remove('hidden', 'bg-blue-100', 'text-blue-800', 'bg-red-100', 'text-red-800', 'bg-emerald-100', 'text-emerald-800');
+
+      if (type === "blue") banner.classList.add('bg-blue-100', 'text-blue-800');
+      if (type === "red") banner.classList.add('bg-red-100', 'text-red-800');
+      if (type === "green") banner.classList.add('bg-emerald-100', 'text-emerald-800');
+
+      banner.innerText = msg;
+    }
+  </script>
+</body>
+</html>
