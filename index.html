@@ -257,17 +257,24 @@ const config = {
       }
     }
 
-    function onScanSuccess(decodedText, decodedResult) {
-      if (isProcessingScan) return;
-      isProcessingScan = true;
+   
+function onScanSuccess(decodedText, decodedResult) {
+  if (isProcessingScan) return;
 
-      console.log(`QR Code matched = ${decodedText}`);
-      
-      if (html5QrCode) html5QrCode.pause();
-      document.getElementById('cameraStatus').innerText = "Processing attendance...";
-      
-      fetchAndAutoMark(decodedText.trim());
-    }
+  isProcessingScan = true;
+
+  if (html5QrCode) {
+    html5QrCode.pause(true);
+  }
+
+  // Hide the scanner while processing the student.
+  document.getElementById('reader').classList.add('hidden');
+
+  document.getElementById('cameraStatus').innerText =
+    "Processing attendance...";
+
+  fetchAndAutoMark(decodedText.trim());
+}
 
     async function fetchAndAutoMark(scannedId) {
       const cleanId = String(scannedId).trim().toUpperCase();
@@ -307,14 +314,25 @@ const config = {
       });
 
       // Auto-dismiss card and resume scanning after 1.2 seconds
-      setTimeout(() => {
-        document.getElementById('resultCard').classList.add('hidden');
-        showAlert("", "hide");
-        isProcessingScan = false;
-        if (html5QrCode) html5QrCode.resume();
-        document.getElementById('cameraStatus').innerText = "Scanning active...";
-      }, 3000);
-    }
+      
+setTimeout(() => {
+  // Hide student information.
+  document.getElementById('resultCard').classList.add('hidden');
+  showAlert("", "hide");
+
+  // Show the scanner again.
+  document.getElementById('reader').classList.remove('hidden');
+
+  isProcessingScan = false;
+
+  if (html5QrCode && html5QrCode.isScanning) {
+    html5QrCode.resume();
+  }
+
+  document.getElementById('cameraStatus').innerText =
+    "Scanning active — ready for next student.";
+}, 3000);
+
 
     function applyStudentCardTheme(student) {
       const card = document.getElementById('resultCard');
