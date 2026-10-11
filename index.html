@@ -196,8 +196,10 @@ async function handleLoginSubmit() {
         );
       }
 
-      sessionStorage.setItem('userRole', res.role);
-      showAppUI(res.role);
+sessionStorage.setItem('sessionToken', res.sessionToken);
+sessionStorage.setItem('userRole', res.role);
+showAppUI(res.role);
+
     } else {
       errEl.innerText =
         (res && res.message) || 'Invalid password or login failed.';
