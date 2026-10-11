@@ -188,7 +188,7 @@
 
   <script>
     // CONFIGURATION: Replace with your deployed Google Apps Script Web App URL and API Key
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxXfZNSQ2BsVoSHDCoRZ9TX7fOst_iUmwc-OkO0LoVPancEIZjw-dbMxfDki7JEBFFt/exec";
+    const WEB_APP_URL = "Your appscript link";
     const API_KEY = "SUPER_SECRET_API_KEY_12345";
 
     const form = document.getElementById('registrationForm');
@@ -224,7 +224,7 @@
     // Fetch classes on page load to populate dropdown
     
 async function loadClasses() {
-  const classSelect = document.getElementById('className');
+  const classSelect = document.getElementById('classSelect');
   const sessionToken = sessionStorage.getItem('sessionToken');
 
   if (!classSelect) {
@@ -368,18 +368,7 @@ form.addEventListener('submit', async function(e) {
   }
 });
 
-  
-        showStatus(`Successfully registered ${firstName} ${lastName} in ${className}! Student ID generated automatically.`, "success");
-        form.reset();
-        loadClasses();
-      } catch (err) {
-        showStatus("Registration Error: " + err.toString(), "error");
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Register";
-      }
-    });
-
+        
     function showStatus(text, type) {
       messageDiv.textContent = text;
       messageDiv.className = type;
