@@ -188,7 +188,7 @@
 
   <script>
     // CONFIGURATION: Replace with your deployed Google Apps Script Web App URL and API Key
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz8Ejy5TwVf8-w4OIJhyQwxhxvW2e4yWtXWQQl7IU1ThXB3dPHftPjyUdCbs5NTr23R/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxXfZNSQ2BsVoSHDCoRZ9TX7fOst_iUmwc-OkO0LoVPancEIZjw-dbMxfDki7JEBFFt/exec";
     const API_KEY = "SUPER_SECRET_API_KEY_12345";
 
     const form = document.getElementById('registrationForm');
@@ -251,47 +251,90 @@
 
     loadClasses();
 
-    form.addEventListener('submit', async function(e) {
-      e.preventDefault();
+    
+form.addEventListener('submit', async function(e) {
+  e.preventDefault();
 
-      const firstName = document.getElementById('firstName').value.trim();
-      const lastName = document.getElementById('lastName').value.trim();
-      const className = classSelect.value;
-      const dob = document.getElementById('dob').value;
-      const parentName = document.getElementById('parentName').value.trim();
-      const parentPhone = phoneInput.value.trim();
-      const parentEmail = emailInput.value.trim();
+  const firstName = document.getElementById('firstName').value.trim();
+  const lastName = document.getElementById('lastName').value.trim();
+  const className = classSelect.value;
+  const dob = document.getElementById('dob').value;
+  const parentName = document.getElementById('parentName').value.trim();
+  const parentPhone = phoneInput.value.trim();
+  const parentEmail = emailInput.value.trim();
 
-      if (!className) {
-        showStatus("Please select a class.", "error");
-        return;
+  if (!firstName || !lastName || !className) {
+    showStatus('Please enter the first name, last name, and class.', 'error');
+    return;
+  }
+
+  // The server requires a valid login session.
+  const sessionToken = sessionStorage.getItem('sessionToken');
+
+  if (!sessionToken) {
+    showStatus(
+      'Your login session is missing. Please log out and log in again.',
+      'error'
+    );
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Registering...';
+  messageDiv.style.display = 'none';
+
+  try {
+    const payload = {
+      apiKey: API_KEY,
+      action: 'registerStudent',
+      data: {
+        sessionToken: sessionToken,
+        firstName: firstName,
+        lastName: lastName,
+        className: className,
+        dob: dob,
+        parentName: parentName,
+        parentPhone: parentPhone,
+        parentEmail: parentEmail
       }
+    };
 
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Registering...";
-      messageDiv.style.display = 'none';
+    const response = await fetch(WEB_APP_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
+      body: JSON.stringify(payload)
+    });
 
-      const payload = {
-        apiKey: API_KEY,
-        action: 'registerStudent',
-        data: {
-          firstName: firstName,
-          lastName: lastName,
-          className: className,
-          dob: dob,
-          parentName: parentName,
-          parentPhone: parentPhone,
-          parentEmail: parentEmail
-        }
-      };
+    const result = await response.json();
 
-      try {
-        const response = await fetch(WEB_APP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        });
+    if (!response.ok || !result || result.success !== true) {
+      throw new Error(
+        result && result.message
+          ? result.message
+          : 'The server did not confirm registration.'
+      );
+    }
 
+    showStatus(
+      result.message || `Successfully registered ${firstName} ${lastName}!`,
+      'success'
+    );
+
+    form.reset();
+    await loadClasses();
+
+  } catch (err) {
+    console.error('Registration error:', err);
+    showStatus('Registration failed: ' + err.message, 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Register';
+  }
+});
+
+  
         showStatus(`Successfully registered ${firstName} ${lastName} in ${className}! Student ID generated automatically.`, "success");
         form.reset();
         loadClasses();
