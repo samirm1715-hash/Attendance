@@ -293,7 +293,7 @@ const config = {
           isProcessingScan = false;
           if (html5QrCode) html5QrCode.resume();
           document.getElementById('cameraStatus').innerText = "Scanning active...";
-        }, 1500);
+        }, 2250);
         return;
       }
 
@@ -313,7 +313,7 @@ const config = {
         isProcessingScan = false;
         if (html5QrCode) html5QrCode.resume();
         document.getElementById('cameraStatus').innerText = "Scanning active...";
-      }, 2250);
+      }, 3000);
     }
 
     function applyStudentCardTheme(student) {
