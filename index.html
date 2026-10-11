@@ -6,27 +6,36 @@
   <title>Scan QR - Attendance</title>
   <style>
     /* Compact, responsive square scanner for phones, tablets and desktops. */
-    #reader {
-      width: min(100%, 280px) !important;
-      max-width: 280px;
-      aspect-ratio: 1 / 1;
-      margin-inline: auto;
-      border: 3px solid #c7d2fe;
-      border-radius: 16px;
-      background: #0f172a;
-      overflow: hidden;
-      box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
-    }
-    #reader video {
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: cover;
-      border-radius: 12px;
-    }
-    #reader img { max-width: 100%; }
-    @media (max-width: 380px) {
-      #reader { width: min(100%, 240px) !important; }
-    }
+    
+#reader {
+  width: min(100%, 280px) !important;
+  max-width: 280px;
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
+  border: 3px solid #c7d2fe;
+  border-radius: 16px;
+  background: #000;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+}
+
+#reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+  background: #000;
+  border-radius: 12px;
+}
+
+#reader img {
+  max-width: 100%;
+}
+
+@media (max-width: 380px) {
+  #reader {
+    width: min(100%, 260px) !important;
+  }
+}
   </style>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -192,22 +201,46 @@
       }
 
       // Scale the scan target to the actual viewport; keep it square and usable on small phones.
-      const config = {
-        fps: 15,
-        qrbox: (viewfinderWidth, viewfinderHeight) => {
-          const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight, 220) * 0.78);
-          return { width: edge, height: edge };
-        },
-        aspectRatio: 1.0,
-        rememberLastUsedCamera: true
-      };
+      
+const config = {
+  fps: 20,
+
+  // Larger scanning area helps detect printed QR codes.
+  qrbox: (viewfinderWidth, viewfinderHeight) => {
+    const edge = Math.floor(
+      Math.min(viewfinderWidth, viewfinderHeight, 280) * 0.90
+    );
+
+    return {
+      width: edge,
+      height: edge
+    };
+  },
+
+  aspectRatio: 1.0,
+  disableFlip: false,
+  rememberLastUsedCamera: true
+};
+
 
       try {
-        await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, () => {});
+        await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, (errorMessage) => {
+  // QR codes may not be visible in every camera frame.
+  // Do not display an error for every unsuccessful frame.
+  if (errorMessage) {
+    console.debug("QR detection:", errorMessage);
+  }
+});
         status.innerText = "Scanning active — hold the QR code inside the square.";
       } catch (rearError) {
         try {
-          await html5QrCode.start({ facingMode: "user" }, config, onScanSuccess, () => {});
+          await html5QrCode.start({ facingMode: "user" }, config, onScanSuccess, (errorMessage) => {
+  // QR codes may not be visible in every camera frame.
+  // Do not display an error for every unsuccessful frame.
+  if (errorMessage) {
+    console.debug("QR detection:", errorMessage);
+  }
+});
           status.innerText = "Using front camera — scanning active.";
         } catch (frontError) {
           console.error("Unable to start camera:", frontError);
