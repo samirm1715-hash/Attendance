@@ -222,32 +222,66 @@
     });
 
     // Fetch classes on page load to populate dropdown
-    async function loadClasses() {
-      try {
-        const response = await fetch(WEB_APP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ apiKey: API_KEY, action: 'getClasses' })
-        });
-        
-        const result = await response.json();
-        
-        classSelect.innerHTML = '<option value="">Select a class...</option>';
-        
-        if (result.success && result.classes.length > 0) {
-          result.classes.forEach(cls => {
-            const opt = document.createElement('option');
-            opt.value = cls;
-            opt.textContent = cls;
-            classSelect.appendChild(opt);
-          });
-        } else {
-          classSelect.innerHTML = '<option value="">No classes found in spreadsheet</option>';
-        }
-      } catch (err) {
-        classSelect.innerHTML = '<option value="">Error loading classes</option>';
-      }
+    
+async function loadClasses() {
+  const classSelect = document.getElementById('className');
+  const sessionToken = sessionStorage.getItem('sessionToken');
+
+  if (!classSelect) {
+    console.error('Class dropdown element not found.');
+    return;
+  }
+
+  if (!sessionToken) {
+    classSelect.innerHTML =
+      '<option value="">Please log in first</option>';
+    console.error('Missing session token. Please log in again.');
+    return;
+  }
+
+  classSelect.innerHTML =
+    '<option value="">Loading classes...</option>';
+
+  try {
+    const response = await fetch(WEB_APP_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
+      body: JSON.stringify({
+        apiKey: API_KEY,
+        action: 'getClasses',
+        sessionToken: sessionToken
+      })
+    });
+
+    const result = await response.json();
+
+    if (!result.success || !Array.isArray(result.classes)) {
+      throw new Error(result.message || 'Could not load classes.');
     }
+
+    classSelect.innerHTML =
+      '<option value="">Select a class</option>';
+
+    result.classes.forEach(function(className) {
+      const option = document.createElement('option');
+      option.value = className;
+      option.textContent = className;
+      classSelect.appendChild(option);
+    });
+
+    if (result.classes.length === 0) {
+      classSelect.innerHTML =
+        '<option value="">No classes found</option>';
+    }
+
+  } catch (error) {
+    console.error('Class loading error:', error);
+    classSelect.innerHTML =
+      '<option value="">Failed to load classes</option>';
+  }
+}
 
     loadClasses();
 
