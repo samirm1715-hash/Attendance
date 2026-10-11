@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Find Student - QR Attendance</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="api-config.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 flex flex-col items-center justify-center">
+
+  <!-- LOGIN SECTION -->
+  <div id="loginCard" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 space-y-4">
+    <div class="text-center">
+      <h1 class="text-2xl font-bold text-slate-800">System Login</h1>
+      <p class="text-xs text-slate-500 mt-1">Authenticate to access Attendance Portal</p>
+    </div>
+
+    <div class="space-y-3 pt-2">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Passcode</label>
+        <input type="password" id="loginPassword" placeholder="Enter system password" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+      </div>
+      <button onclick="handleLoginSubmit()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition shadow-md">
+        Unlock Portal
+      </button>
+    </div>
+    <p id="loginError" class="text-xs text-red-500 text-center hidden"></p>
+  </div>
+
+  <!-- MAIN APP SECTION -->
+  <div id="appSection" class="hidden w-full max-w-md bg-white rounded-2xl shadow-xl p-5 space-y-4 my-2">
+    <div class="flex justify-between items-center border-b pb-3">
+      <div>
+        <h1 class="text-lg font-bold text-slate-800">Find Student</h1>
+        <p id="userRoleBadge" class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider"></p>
+      </div>
+      <button onclick="logout()" class="text-xs text-red-500 font-semibold hover:underline">Logout</button>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold text-center">
+      <a href="index.html" class="py-2.5 rounded-lg text-slate-600 hover:text-slate-900">Scan QR</a>
+      <a href="find.html" class="py-2.5 rounded-lg text-white bg-indigo-600">Find Student</a>
+      <a href="register.html" class="py-2.5 rounded-lg text-slate-600 hover:text-slate-900">New Reg</a>
+    </nav>
+
+    <!-- Search Input Controls -->
+    <div class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Search Roster</label>
+        <input type="text" id="searchInput" oninput="filterStudents()" placeholder="Type Name or Student ID..." class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+      </div>
+      <p id="statusMessage" class="text-xs text-center text-slate-400">Loading student roster...</p>
+    </div>
+
+    <!-- Results List Container -->
+    <div id="resultsContainer" class="space-y-3 max-h-[420px] overflow-y-auto pr-1"></div>
+
+    <div id="alertBanner" class="hidden p-3 rounded-xl text-xs text-center font-semibold"></div>
+  </div>
+
+  <script>
+    let studentList = [];
+    let isRosterLoaded = false;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const sessionRole = sessionStorage.getItem('userRole');
+      if (sessionRole) {
+        showAppUI(sessionRole);
+      }
+    });
+
+    async function handleLoginSubmit() {
+      const pwd = document.getElementById('loginPassword').value.trim();
+      const errEl = document.getElementById('loginError');
+      errEl.classList.add('hidden');
+
+      if (!pwd) return;
+
+      const res = await loginApi(pwd);
+      if (res.success) {
+        sessionStorage.setItem('userRole', res.role);
+        showAppUI(res.role);
+      } else {
+        errEl.innerText = res.message || "Invalid Passcode";
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    function showAppUI(role) {
+      document.getElementById('loginCard').classList.add('hidden');
+      document.getElementById('appSection').classList.remove('hidden');
+      document.getElementById('userRoleBadge').innerText = `Session: ${role}`;
+      loadStudentRoster();
+    }
+
+    function logout() {
+      sessionStorage.clear();
+      window.location.reload();
+    }
+
+    // Unified getClassColor matching your exact rules (with Part 1C -> Black)
+    function getClassColor(className) {
+      if (!className) return '#5f6368';
+      
+      const name = String(className).toLowerCase().replace(/[^a-z0-9\+\-\s]/g, '').trim();
+
+      if (name.includes('1c') || name.includes('12+') || name.includes('part 1 c')) {
+        return '#000000'; // Black
+      } 
+      if (name.includes('part 1b') || name.includes('7+')) {
+        return '#ff69b4'; // Pink
+      } 
+      if (name.includes('part 1a') || name.includes('4-6') || name.includes('4 - 6')) {
+        return '#d93025'; // Red
+      } 
+      if (name.includes('below 4')) {
+        return '#1a73e8'; // Blue
+      } 
+      if (name.includes('part 2')) {
+        return '#ff8c00'; // Orange
+      } 
+      if (name.includes('part 3')) {
+        return '#800080'; // Purple
+      } 
+      if (name.includes('part 4') || name.includes('part 5') || name.includes('4-5') || name.includes('4 - 5')) {
+        return '#0d652d'; // Green
+      } 
+      if (name.includes('part 6')) {
+        return '#fbbc04'; // Yellow
+      } 
+      if (name.includes('pronounciation') || name.includes('pronunciation')) {
+        return '#8b4513'; // Brown
+      }
+      
+      return '#5f6368';
+    }
+
+    async function loadStudentRoster() {
+      try {
+        const res = await searchStudentsApi({ id: "" });
+        if (res.success && res.students) {
+          studentList = res.students;
+          isRosterLoaded = true;
+          document.getElementById('statusMessage').innerText = `Loaded ${studentList.length} students. Start typing to filter.`;
+          filterStudents();
+        } else {
+          document.getElementById('statusMessage').innerText = "No students found in spreadsheet.";
+        }
+      } catch (e) {
+        document.getElementById('statusMessage').innerText = "Error loading roster from server.";
+      }
+    }
+
+    function filterStudents() {
+      if (!isRosterLoaded) return;
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      const container = document.getElementById('resultsContainer');
+      container.innerHTML = "";
+
+      if (!query) {
+        document.getElementById('statusMessage').innerText = `Loaded ${studentList.length} students. Start typing to filter.`;
+        return;
+      }
+
+      const filtered = studentList.filter(s => {
+        const fullName = `${s.firstName} ${s.lastName}`.toLowerCase();
+        const id = String(s.id).toLowerCase();
+        return fullName.includes(query) || id.includes(query);
+      });
+
+      document.getElementById('statusMessage').innerText = `Found ${filtered.length} matching student(s).`;
+
+      filtered.forEach(student => {
+        const card = createStudentCard(student);
+        container.appendChild(card);
+      });
+    }
+
+    function createStudentCard(student) {
+      const className = student.className || student.class || 'Class';
+      const hexColor = getClassColor(className);
+
+      const div = document.createElement('div');
+      div.className = "border-2 rounded-2xl p-4 space-y-3 transition-all duration-200";
+      div.style.backgroundColor = hexToRgba(hexColor, 0.12);
+      div.style.borderColor = hexColor;
+
+      div.innerHTML = `
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold px-3 py-1 rounded-full text-white shadow-sm" style="background-color: ${hexColor}; color: ${hexColor === '#fbbc04' ? '#000000' : '#ffffff'};">${className}</span>
+          <span class="text-xs font-mono font-bold opacity-75">ID: ${student.id}</span>
+        </div>
+        <div>
+          <h3 class="text-lg font-extrabold text-slate-900">${student.firstName} ${student.lastName}</h3>
+        </div>
+        <button onclick="markPresentFromFind('${student.id}', '${className}', '${student.firstName}', this)" class="w-full bg-emerald-600 text-white py-2.5 rounded-xl font-bold hover:bg-emerald-700 transition shadow-sm text-xs">
+          Mark Present
+        </button>
+      `;
+      return div;
+    }
+
+    async function markPresentFromFind(id, className, firstName, btnElement) {
+      btnElement.disabled = true;
+      btnElement.innerText = "Marking...";
+      showAlert("Marking attendance...", "blue");
+
+      try {
+        const res = await markAttendance({ id: id, className: className, firstName: firstName });
+        showAlert(res.message, res.success ? "green" : "red");
+        btnElement.innerText = res.success ? "✓ Marked Present" : "Mark Present";
+        if (!res.success) btnElement.disabled = false;
+      } catch (e) {
+        showAlert("Failed to mark attendance", "red");
+        btnElement.innerText = "Mark Present";
+        btnElement.disabled = false;
+      }
+    }
+
+    function hexToRgba(hex, alpha) {
+      const cleanHex = (hex || '#5f6368').replace('#', '');
+      const r = parseInt(cleanHex.substring(0, 2), 16);
+      const g = parseInt(cleanHex.substring(2, 4), 16);
+      const b = parseInt(cleanHex.substring(4, 6), 16);
+      
+      const finalR = isNaN(r) ? 95 : r;
+      const finalG = isNaN(g) ? 99 : g;
+      const finalB = isNaN(b) ? 104 : b;
+      
+      return `rgba(${finalR}, ${finalG}, ${finalB}, ${alpha})`;
+    }
+
+    function showAlert(msg, type) {
+      const banner = document.getElementById('alertBanner');
+      if (type === "hide") {
+        banner.classList.add('hidden');
+        return;
+      }
+
+      banner.classList.remove('hidden', 'bg-blue-100', 'text-blue-800', 'bg-red-100', 'text-red-800', 'bg-emerald-100', 'text-emerald-800');
+
+      if (type === "blue") banner.classList.add('bg-blue-100', 'text-blue-800');
+      if (type === "red") banner.classList.add('bg-red-100', 'text-red-800');
+      if (type === "green") banner.classList.add('bg-emerald-100', 'text-emerald-800');
+
+      banner.innerText = msg;
+    }
+  </script>
+</body>
+</html>
