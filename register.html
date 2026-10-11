@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Registration Portal</title>
+  <style>
+    :root {
+      --primary-color: #1a73e8;
+      --success-color: #0d652d;
+      --error-color: #d93025;
+      --bg-color: #f8f9fa;
+      --card-bg: #ffffff;
+      --text-color: #202124;
+      --border-color: #dadce0;
+      --secondary-bg: #f1f3f4;
+      --secondary-hover: #e8eaed;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: var(--card-bg);
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      width: 100%;
+      max-width: 500px;
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: var(--primary-color);
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    #submitBtn {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    #submitBtn:hover {
+      background-color: #1557b0;
+    }
+
+    #submitBtn:disabled {
+      background-color: var(--border-color);
+      cursor: not-allowed;
+    }
+
+    #cancelBtn {
+      background-color: var(--secondary-bg);
+      color: var(--text-color);
+    }
+
+    #cancelBtn:hover {
+      background-color: var(--secondary-hover);
+    }
+
+    #message {
+      margin-top: 16px;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      text-align: center;
+      display: none;
+    }
+
+    .success {
+      background-color: #e6f4ea;
+      color: var(--success-color);
+      border: 1px solid #ceead6;
+    }
+
+    .error {
+      background-color: #fce8e6;
+      color: var(--error-color);
+      border: 1px solid #fad2cf;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Student Registration</h2>
+    <form id="registrationForm">
+      
+      <div class="form-group">
+        <label for="firstName">First Name *</label>
+        <input type="text" id="firstName" required placeholder="e.g., John">
+      </div>
+
+      <div class="form-group">
+        <label for="lastName">Last Name *</label>
+        <input type="text" id="lastName" required placeholder="e.g., Smith">
+      </div>
+
+      <div class="form-group">
+        <label for="classSelect">Class *</label>
+        <select id="classSelect" required>
+          <option value="">Loading classes...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="dob">Date of Birth</label>
+        <input type="date" id="dob">
+      </div>
+
+      <div class="form-group">
+        <label for="parentName">Parent Name</label>
+        <input type="text" id="parentName" placeholder="e.g., Robert Smith">
+      </div>
+
+      <div class="form-group">
+        <label for="parentPhone">Parent Phone / WhatsApp</label>
+        <input type="text" id="parentPhone" placeholder="123-456-7890" maxlength="12">
+      </div>
+
+      <div class="form-group">
+        <label for="parentEmail">Parent Email</label>
+        <input type="email" id="parentEmail" placeholder="parent@example.com">
+      </div>
+
+      <div class="button-group">
+        <button type="button" id="cancelBtn">Cancel</button>
+        <button type="submit" id="submitBtn">Register</button>
+      </div>
+    </form>
+
+    <div id="message"></div>
+  </div>
+
+  <script>
+    // CONFIGURATION: Replace with your deployed Google Apps Script Web App URL and API Key
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz8Ejy5TwVf8-w4OIJhyQwxhxvW2e4yWtXWQQl7IU1ThXB3dPHftPjyUdCbs5NTr23R/exec";
+    const API_KEY = "SUPER_SECRET_API_KEY_12345";
+
+    const form = document.getElementById('registrationForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const classSelect = document.getElementById('classSelect');
+    const phoneInput = document.getElementById('parentPhone');
+    const emailInput = document.getElementById('parentEmail');
+    const messageDiv = document.getElementById('message');
+
+    // Auto-format phone number as 111-111-1111
+    phoneInput.addEventListener('input', function(e) {
+      let cleaned = e.target.value.replace(/\D/g, '');
+      cleaned = cleaned.substring(0, 10);
+      
+      let formatted = '';
+      if (cleaned.length > 6) {
+        formatted = `${cleaned.substring(0, 3)}-${cleaned.substring(3, 6)}-${cleaned.substring(6)}`;
+      } else if (cleaned.length > 3) {
+        formatted = `${cleaned.substring(0, 3)}-${cleaned.substring(3)}`;
+      } else {
+        formatted = cleaned;
+      }
+      
+      e.target.value = formatted;
+    });
+
+    // Cancel Button navigation back to index.html
+    cancelBtn.addEventListener('click', function() {
+      window.location.href = 'index.html';
+    });
+
+    // Fetch classes on page load to populate dropdown
+    async function loadClasses() {
+      try {
+        const response = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ apiKey: API_KEY, action: 'getClasses' })
+        });
+        
+        const result = await response.json();
+        
+        classSelect.innerHTML = '<option value="">Select a class...</option>';
+        
+        if (result.success && result.classes.length > 0) {
+          result.classes.forEach(cls => {
+            const opt = document.createElement('option');
+            opt.value = cls;
+            opt.textContent = cls;
+            classSelect.appendChild(opt);
+          });
+        } else {
+          classSelect.innerHTML = '<option value="">No classes found in spreadsheet</option>';
+        }
+      } catch (err) {
+        classSelect.innerHTML = '<option value="">Error loading classes</option>';
+      }
+    }
+
+    loadClasses();
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const firstName = document.getElementById('firstName').value.trim();
+      const lastName = document.getElementById('lastName').value.trim();
+      const className = classSelect.value;
+      const dob = document.getElementById('dob').value;
+      const parentName = document.getElementById('parentName').value.trim();
+      const parentPhone = phoneInput.value.trim();
+      const parentEmail = emailInput.value.trim();
+
+      if (!className) {
+        showStatus("Please select a class.", "error");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Registering...";
+      messageDiv.style.display = 'none';
+
+      const payload = {
+        apiKey: API_KEY,
+        action: 'registerStudent',
+        data: {
+          firstName: firstName,
+          lastName: lastName,
+          className: className,
+          dob: dob,
+          parentName: parentName,
+          parentPhone: parentPhone,
+          parentEmail: parentEmail
+        }
+      };
+
+      try {
+        const response = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+
+        showStatus(`Successfully registered ${firstName} ${lastName} in ${className}! Student ID generated automatically.`, "success");
+        form.reset();
+        loadClasses();
+      } catch (err) {
+        showStatus("Registration Error: " + err.toString(), "error");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Register";
+      }
+    });
+
+    function showStatus(text, type) {
+      messageDiv.textContent = text;
+      messageDiv.className = type;
+      messageDiv.style.display = 'block';
+    }
+  </script>
+
+</body>
+</html>
