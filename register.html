@@ -281,14 +281,7 @@ async function loadClasses() {
   }
 }
 
-  catch (error) {
-    console.error('Class loading error:', error);
-    classSelect.innerHTML =
-      '<option value="">Failed to load classes</option>';
-  }
-
-
-    loadClasses();
+  loadClasses();
 
     
 form.addEventListener('submit', async function(e) {
