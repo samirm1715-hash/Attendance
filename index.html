@@ -190,17 +190,17 @@ async function handleLoginSubmit() {
     console.log('Login API response:', res);
 
     if (res && res.success) {
-      if (!res.role) {
-        throw new Error(
-          'Login succeeded, but no user role was returned.'
-        );
-      }
+  if (!res.role || !res.sessionToken) {
+    throw new Error(
+      'Login response is missing the role or session token.'
+    );
+  }
 
-sessionStorage.setItem('sessionToken', res.sessionToken);
-sessionStorage.setItem('userRole', res.role);
-showAppUI(res.role);
-
-    } else {
+  sessionStorage.setItem('sessionToken', res.sessionToken);
+  sessionStorage.setItem('userRole', res.role);
+  showAppUI(res.role);
+}
+    else {
       errEl.innerText =
         (res && res.message) || 'Invalid password or login failed.';
       errEl.classList.remove('hidden');
