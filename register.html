@@ -322,7 +322,7 @@ form.addEventListener('submit', async function(e) {
       apiKey: API_KEY,
       action: 'registerStudent',
       data: {
-        sessionToken: sessionToken,
+        sessionToken: sessionStorage.getItem('sessionToken'),
         firstName: firstName,
         lastName: lastName,
         className: className,
