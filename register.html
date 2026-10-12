@@ -281,15 +281,15 @@ async function loadClasses() {
   }
 }
 
-  loadClasses();
+  
+loadClasses();
 
-    
 form.addEventListener('submit', async function(e) {
   e.preventDefault();
 
   const firstName = document.getElementById('firstName').value.trim();
   const lastName = document.getElementById('lastName').value.trim();
-  const className = classSelect.value;
+  const className = document.getElementById('classSelect').value;
   const dob = document.getElementById('dob').value;
   const parentName = document.getElementById('parentName').value.trim();
   const parentPhone = phoneInput.value.trim();
@@ -300,14 +300,10 @@ form.addEventListener('submit', async function(e) {
     return;
   }
 
-  // The server requires a valid login session.
   const sessionToken = sessionStorage.getItem('sessionToken');
 
   if (!sessionToken) {
-    showStatus(
-      'Your login session is missing. Please log out and log in again.',
-      'error'
-    );
+    showStatus('Your session is missing. Please log in again.', 'error');
     return;
   }
 
@@ -320,7 +316,7 @@ form.addEventListener('submit', async function(e) {
       apiKey: API_KEY,
       action: 'registerStudent',
       data: {
-        sessionToken: sessionStorage.getItem('sessionToken'),
+        sessionToken: sessionToken,
         firstName: firstName,
         lastName: lastName,
         className: className,
@@ -366,12 +362,11 @@ form.addEventListener('submit', async function(e) {
   }
 });
 
-        
-    function showStatus(text, type) {
-      messageDiv.textContent = text;
-      messageDiv.className = type;
-      messageDiv.style.display = 'block';
-    }
+function showStatus(text, type) {
+  messageDiv.textContent = text;
+  messageDiv.className = type;
+  messageDiv.style.display = 'block';
+}
   </script>
 
 </body>
