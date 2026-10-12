@@ -103,9 +103,16 @@
 
   <script>
     let html5QrCode = null;
-    let studentCache = {};
+    let studentCache = Object.create(null);
     let isCacheLoaded = false;
     let isProcessingScan = false;
+
+      function normalizeStudentId(value) {
+      return String(value || '')
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '');
+      }
 
     function getClassColor(className) {
       if (!className) return '#5f6368';
@@ -134,28 +141,55 @@
     }
       
     window.addEventListener('DOMContentLoaded', () => {
-      preloadStudentRoster();
-      const sessionRole = sessionStorage.getItem('userRole');
-      if (sessionRole) showAppUI(sessionRole);
+  const sessionRole = sessionStorage.getItem('userRole');
+
+  if (sessionRole) {
+    showAppUI(sessionRole);
+  }
+});
+    
+async function preloadStudentRoster() {
+  document.getElementById('cameraStatus').innerText =
+    'Loading student list...';
+
+  isCacheLoaded = false;
+
+  try {
+    const res = await searchStudentsApi({ id: '' });
+
+    if (!res || !res.success || !Array.isArray(res.students)) {
+      throw new Error(
+        (res && res.message) || 'Unable to load student list.'
+      );
+    }
+
+    const newCache = Object.create(null);
+
+    res.students.forEach(student => {
+      const id = normalizeStudentId(student.id);
+
+      if (id) {
+        newCache[id] = student;
+      }
     });
 
-    async function preloadStudentRoster() {
-      document.getElementById('cameraStatus').innerText = "Syncing student roster...";
-      try {
-        const res = await searchStudentsApi({ id: "" });
-        if (res.success && res.students) {
-          studentCache = {};
-          res.students.forEach(student => {
-            const cleanId = String(student.id).trim().toUpperCase();
-            studentCache[cleanId] = student;
-          });
-          isCacheLoaded = true;
-          document.getElementById('cameraStatus').innerText = "Camera scanner ready";
-        }
-      } catch (e) {
-        document.getElementById('cameraStatus').innerText = "Camera scanner ready";
-      }
-    }
+    studentCache = newCache;
+    isCacheLoaded = true;
+
+    document.getElementById('cameraStatus').innerText =
+      `Student list ready (${Object.keys(studentCache).length} students)`;
+
+    return true;
+
+  } catch (err) {
+    console.error('Student roster loading failed:', err);
+
+    document.getElementById('cameraStatus').innerText =
+      'Student list unavailable; using server lookup.';
+
+    return false;
+  }
+}
 
     
 async function handleLoginSubmit() {
@@ -217,12 +251,15 @@ async function handleLoginSubmit() {
   }
 }
 
-    function showAppUI(role) {
-      document.getElementById('loginCard').classList.add('hidden');
-      document.getElementById('appSection').classList.remove('hidden');
-      document.getElementById('userRoleBadge').innerText = `Session: ${role}`;
-      startCamera();
-    }
+    async function showAppUI(role) {
+  document.getElementById('loginCard').classList.add('hidden');
+  document.getElementById('appSection').classList.remove('hidden');
+  document.getElementById('userRoleBadge').innerText =
+    `Session: ${role}`;
+
+  await preloadStudentRoster();
+  await startCamera();
+}
 
     
 async function logout() {
@@ -327,7 +364,7 @@ function onScanSuccess(decodedText, decodedResult) {
 }
 
     async function fetchAndAutoMark(scannedId) {
-      const cleanId = String(scannedId).trim().toUpperCase();
+     const cleanId = normalizeStudentId(scannedId);
       let student = null;
 
       if (isCacheLoaded && studentCache[cleanId]) {
