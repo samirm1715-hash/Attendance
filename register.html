@@ -223,24 +223,22 @@
 
     // Fetch classes on page load to populate dropdown
     
+
 async function loadClasses() {
   const classSelect = document.getElementById('classSelect');
   const sessionToken = sessionStorage.getItem('sessionToken');
 
   if (!classSelect) {
-    console.error('Class dropdown element not found.');
+    console.error('Could not find dropdown: classSelect');
     return;
   }
 
   if (!sessionToken) {
-    classSelect.innerHTML =
-      '<option value="">Please log in first</option>';
-    console.error('Missing session token. Please log in again.');
+    showStatus('Please log in again before loading classes.', 'error');
     return;
   }
 
-  classSelect.innerHTML =
-    '<option value="">Loading classes...</option>';
+  classSelect.innerHTML = '<option value="">Loading classes...</option>';
 
   try {
     const response = await fetch(WEB_APP_URL, {
@@ -251,30 +249,37 @@ async function loadClasses() {
       body: JSON.stringify({
         apiKey: API_KEY,
         action: 'getClasses',
-        sessionToken: sessionToken
+        data: {
+          sessionToken: sessionToken
+        }
       })
     });
 
     const result = await response.json();
+    console.log('getClasses response:', result);
 
-    if (!result.success || !Array.isArray(result.classes)) {
-      throw new Error(result.message || 'Could not load classes.');
+    if (!result.success) {
+      throw new Error(result.message || result.code || 'Could not load classes.');
     }
 
-    classSelect.innerHTML =
-      '<option value="">Select a class</option>';
+    classSelect.innerHTML = '<option value="">Select a class</option>';
 
-    result.classes.forEach(function(className) {
+    (result.classes || []).forEach(className => {
       const option = document.createElement('option');
       option.value = className;
       option.textContent = className;
       classSelect.appendChild(option);
     });
 
-    if (result.classes.length === 0) {
-      classSelect.innerHTML =
-        '<option value="">No classes found</option>';
+    if (!result.classes || result.classes.length === 0) {
+      classSelect.innerHTML = '<option value="">No classes found</option>';
     }
+  } catch (error) {
+    console.error('Class loading error:', error);
+    classSelect.innerHTML = '<option value="">Failed to load classes</option>';
+    showStatus('Class loading error: ' + error.message, 'error');
+  }
+}
 
   } catch (error) {
     console.error('Class loading error:', error);
