@@ -143,6 +143,18 @@
         if (res.success && res.students) {
           studentList = res.students;
           isRosterLoaded = true;
+          // Save the roster so the Scan page can reuse it.
+            try {
+              sessionStorage.setItem(
+                'attendanceRosterCacheV1',
+                JSON.stringify({
+                  savedAt: Date.now(),
+                  students: studentList
+                })
+              );
+            } catch (error) {
+              console.warn('Could not cache student roster:', error);
+            }
           document.getElementById('statusMessage').innerText = `Loaded ${studentList.length} students. Start typing to filter.`;
           filterStudents();
         } else {
