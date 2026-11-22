@@ -79,6 +79,77 @@
       <a href="register.html" class="py-2.5 rounded-lg text-slate-600 hover:text-slate-900">New Reg</a>
     </nav>
 
+    
+<!-- TODAY'S ATTENDANCE DASHBOARD -->
+<div id="attendanceDashboard"
+     class="bg-white border border-slate-200 rounded-2xl p-4 space-y-4 shadow-sm">
+
+  <div class="flex justify-between items-center">
+    <div>
+      <h2 class="text-sm font-extrabold text-slate-800">
+        Today's Attendance
+      </h2>
+      <p id="attendanceDate"
+         class="text-xs text-slate-400 mt-1">Loading date...</p>
+    </div>
+
+    <button onclick="refreshAttendanceSummary()"
+            class="text-xs font-semibold text-indigo-600">
+      Refresh
+    </button>
+  </div>
+
+  <!-- OVERALL TOTAL -->
+  <div class="grid grid-cols-2 gap-3">
+    <div class="bg-emerald-50 rounded-xl p-3">
+      <p class="text-xs text-emerald-700 font-semibold">
+        Present
+      </p>
+      <p id="overallPresent"
+         class="text-2xl font-extrabold text-emerald-700">—</p>
+    </div>
+
+    <div class="bg-slate-100 rounded-xl p-3">
+      <p class="text-xs text-slate-600 font-semibold">
+        Total Students
+      </p>
+      <p id="overallTotal"
+         class="text-2xl font-extrabold text-slate-800">—</p>
+    </div>
+  </div>
+
+  <div class="flex justify-between text-xs font-semibold">
+    <span id="overallPercentage" class="text-indigo-700">
+      Attendance: —
+    </span>
+    <span id="overallAbsent" class="text-red-600">
+      Absent: —
+    </span>
+  </div>
+
+  <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+    <div id="overallProgress"
+         class="bg-emerald-500 h-full rounded-full"
+         style="width:0%"></div>
+  </div>
+
+  <div class="border-t border-slate-100 pt-3">
+    <h3 class="text-xs font-extrabold text-slate-700 mb-3">
+      Class Attendance
+    </h3>
+
+    <div id="classAttendanceList" class="space-y-3">
+      <p class="text-xs text-slate-400">
+        Loading class attendance...
+      </p>
+    </div>
+  </div>
+
+  <p id="attendanceUpdated"
+     class="text-right text-[10px] text-slate-400"></p>
+</div>
+
+    
     <!-- Scan View Content -->
     <div class="space-y-3">
       <div id="reader" class="w-full aspect-square bg-black rounded-xl overflow-hidden" aria-label="QR code camera scanner"></div>
@@ -253,6 +324,140 @@ async function handleLoginSubmit() {
   }
 }
 
+
+    // Converts a Google Sheets tab colour into a transparent background colour.
+function attendanceHexToRgba(hex, alpha) {
+  const value = hex.replace('#', '');
+  const number = parseInt(value, 16);
+
+  const red = (number >> 16) & 255;
+  const green = (number >> 8) & 255;
+  const blue = number & 255;
+
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+let attendanceRefreshTimer = null;
+let attendanceSummaryLoading = false;
+
+async function refreshAttendanceSummary() {
+  // Prevent multiple summary requests from running at the same time.
+  if (attendanceSummaryLoading) return;
+
+  attendanceSummaryLoading = true;
+
+  try {
+    const result = await getAttendanceSummaryApi();
+
+    if (!result || !result.success) {
+      throw new Error(
+        result?.message || 'Unable to load attendance.'
+      );
+    }
+
+    // Update the overall attendance figures.
+    document.getElementById('attendanceDate').innerText =
+      'Date: ' + result.attendanceDate;
+
+    document.getElementById('overallPresent').innerText =
+      result.totalPresent;
+
+    document.getElementById('overallTotal').innerText =
+      result.totalStudents;
+
+    document.getElementById('overallAbsent').innerText =
+      'Absent: ' + result.totalAbsent;
+
+    document.getElementById('overallPercentage').innerText =
+      'Attendance: ' + result.percentage + '%';
+
+    document.getElementById('overallProgress').style.width =
+      result.percentage + '%';
+
+    // Clear the old class cards before displaying updated figures.
+    const list = document.getElementById('classAttendanceList');
+    list.replaceChildren();
+
+    if (!Array.isArray(result.classes) || result.classes.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'text-xs text-slate-400';
+      empty.innerText = 'No class attendance data available.';
+      list.appendChild(empty);
+    } else {
+      result.classes.forEach(item => {
+        // Use the actual tab colour, with a fallback if none is set.
+        const color = /^#[0-9a-f]{6}$/i.test(item.tabColor || '')
+          ? item.tabColor
+          : '#64748b';
+
+        const card = document.createElement('div');
+        card.className = 'rounded-lg p-3 space-y-2';
+        card.style.borderLeft = '4px solid ' + color;
+        card.style.backgroundColor =
+          attendanceHexToRgba(color, 0.08);
+
+        // Class name and present/total count.
+        const heading = document.createElement('div');
+        heading.className =
+          'flex justify-between items-center gap-2';
+
+        const name = document.createElement('span');
+        name.className =
+          'text-xs font-extrabold text-slate-800';
+        name.innerText = item.className;
+
+        const count = document.createElement('span');
+        count.className = 'text-xs font-bold text-slate-700';
+        count.innerText = item.present + ' / ' + item.total;
+
+        heading.append(name, count);
+
+        // Absent count and attendance percentage.
+        const details = document.createElement('div');
+        details.className =
+          'flex justify-between text-[11px]';
+
+        const absent = document.createElement('span');
+        absent.className = 'text-red-600';
+        absent.innerText = 'Absent: ' + item.absent;
+
+        const percentage = document.createElement('span');
+        percentage.className =
+          'font-bold text-slate-600';
+        percentage.innerText = item.percentage + '%';
+
+        details.append(absent, percentage);
+
+        // Class attendance progress bar.
+        const track = document.createElement('div');
+        track.className =
+          'w-full h-2 rounded-full overflow-hidden bg-white';
+
+        const bar = document.createElement('div');
+        bar.className = 'h-full rounded-full';
+        bar.style.backgroundColor = color;
+        bar.style.width = item.percentage + '%';
+
+        track.appendChild(bar);
+
+        card.append(heading, details, track);
+        list.appendChild(card);
+      });
+    }
+
+    document.getElementById('attendanceUpdated').innerText =
+      'Last updated: ' + new Date().toLocaleTimeString();
+
+  } catch (error) {
+    console.error('Attendance dashboard error:', error);
+
+    document.getElementById('attendanceUpdated').innerText =
+      'Attendance summary could not be refreshed.';
+
+  } finally {
+    attendanceSummaryLoading = false;
+  }
+}
     async function showAppUI(role) {
   document.getElementById('loginCard').classList.add('hidden');
   document.getElementById('appSection').classList.remove('hidden');
@@ -260,7 +465,20 @@ async function handleLoginSubmit() {
     `Session: ${role}`;
 
   await preloadStudentRoster();
-  await startCamera();
+
+// Load attendance figures when the scanner page opens.
+await refreshAttendanceSummary();
+
+// Refresh the dashboard every 30 seconds.
+if (!attendanceRefreshTimer) {
+  attendanceRefreshTimer = setInterval(
+    refreshAttendanceSummary,
+    30000
+  );
+}
+
+// Start the QR scanner as before.
+await startCamera();
 }
 
     
@@ -398,10 +616,28 @@ function onScanSuccess(decodedText, decodedResult) {
       showAlert(`✓ Marked Present: ${student.firstName} ${student.lastName}`, "green");
 
       // Fire background attendance record
-      markAttendance(student).catch(err => {
-        console.error("Background attendance sync error:", err);
-      });
+      markAttendance(student)
+  .then(result => {
+    // Refresh the dashboard after the attendance request finishes.
+    refreshAttendanceSummary();
 
+    if (result && !result.success) {
+      console.warn(
+        'Attendance was not newly recorded:',
+        result.message
+      );
+    }
+  })
+  .catch(err => {
+    console.error(
+      "Background attendance sync error:",
+      err
+    );
+
+    // Refresh anyway in case the server saved the attendance
+    // before an error occurred.
+    refreshAttendanceSummary();
+  });
       // Auto-dismiss card and resume scanning after 1.2 seconds
       
 setTimeout(() => {
