@@ -79,6 +79,25 @@
       <a href="register.html" class="py-2.5 rounded-lg text-slate-600 hover:text-slate-900">New Reg</a>
     </nav>
 
+      <!-- Scan View Content -->
+    <div class="space-y-3">
+      <div id="reader" class="w-full aspect-square bg-black rounded-xl overflow-hidden" aria-label="QR code camera scanner"></div>
+      <p id="cameraStatus" class="text-xs text-center text-slate-400">Initializing camera scanner...</p>
+    </div>
+
+    <!-- Student Details Result Card (Auto-Dismissing Kiosk Mode) -->
+    <div id="resultCard" class="hidden border-2 rounded-2xl p-5 space-y-3 transition-all duration-300">
+      <div class="flex justify-between items-center">
+        <span id="cardClassBadge" class="text-xs font-bold px-3 py-1 rounded-full text-white shadow-sm">Class</span>
+        <span id="cardId" class="text-xs font-mono font-bold opacity-75">ID</span>
+      </div>
+      <div>
+        <h3 id="cardName" class="text-xl font-extrabold text-slate-900">First Last</h3>
+        <p id="cardClassText" class="text-xs font-semibold opacity-80 mt-0.5">Class Name</p>
+      </div>
+      <p class="text-center text-xs font-bold text-emerald-600 pt-1">Attendance Logged Automatically ✓</p>
+    </div>
+
     
 <!-- TODAY'S ATTENDANCE DASHBOARD -->
 <div id="attendanceDashboard"
@@ -149,26 +168,8 @@
      class="text-right text-[10px] text-slate-400"></p>
 </div>
 
-    
-    <!-- Scan View Content -->
-    <div class="space-y-3">
-      <div id="reader" class="w-full aspect-square bg-black rounded-xl overflow-hidden" aria-label="QR code camera scanner"></div>
-      <p id="cameraStatus" class="text-xs text-center text-slate-400">Initializing camera scanner...</p>
-    </div>
-
-    <!-- Student Details Result Card (Auto-Dismissing Kiosk Mode) -->
-    <div id="resultCard" class="hidden border-2 rounded-2xl p-5 space-y-3 transition-all duration-300">
-      <div class="flex justify-between items-center">
-        <span id="cardClassBadge" class="text-xs font-bold px-3 py-1 rounded-full text-white shadow-sm">Class</span>
-        <span id="cardId" class="text-xs font-mono font-bold opacity-75">ID</span>
-      </div>
-      <div>
-        <h3 id="cardName" class="text-xl font-extrabold text-slate-900">First Last</h3>
-        <p id="cardClassText" class="text-xs font-semibold opacity-80 mt-0.5">Class Name</p>
-      </div>
-      <p class="text-center text-xs font-bold text-emerald-600 pt-1">Attendance Logged Automatically ✓</p>
-    </div>
-
+  
+  
     <div id="alertBanner" class="hidden p-3 rounded-xl text-xs text-center font-semibold"></div>
   </div>
 
