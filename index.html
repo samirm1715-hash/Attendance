@@ -222,7 +222,60 @@
   }
 });
     
+const ROSTER_CACHE_KEY = 'attendanceRosterCacheV1';
+const ROSTER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCachedStudentRoster() {
+  try {
+    const saved = sessionStorage.getItem(ROSTER_CACHE_KEY);
+
+    if (!saved) return null;
+
+    const cached = JSON.parse(saved);
+
+    if (
+      !cached ||
+      !Array.isArray(cached.students) ||
+      !cached.savedAt ||
+      Date.now() - cached.savedAt > ROSTER_CACHE_TTL
+    ) {
+      sessionStorage.removeItem(ROSTER_CACHE_KEY);
+      return null;
+    }
+
+    return cached.students;
+
+  } catch (error) {
+    console.warn('Roster cache error:', error);
+    return null;
+  }
+}
+
 async function preloadStudentRoster() {
+
+  // First, try to reuse the roster saved by the Find page.
+  const cachedStudents = getCachedStudentRoster();
+
+  if (cachedStudents) {
+    studentCache = Object.create(null);
+
+    cachedStudents.forEach(student => {
+      const id = normalizeStudentId(student.id);
+
+      if (id) {
+        studentCache[id] = student;
+      }
+    });
+
+    isCacheLoaded = true;
+
+    document.getElementById('cameraStatus').innerText =
+      `Student list ready (${Object.keys(studentCache).length} students)`;
+
+    return true;
+  }
+
+  // No valid cached roster: download it from the server.
   document.getElementById('cameraStatus').innerText =
     'Loading student list...';
 
@@ -250,6 +303,19 @@ async function preloadStudentRoster() {
     studentCache = newCache;
     isCacheLoaded = true;
 
+    // Save the downloaded roster for the next page visit.
+    try {
+      sessionStorage.setItem(
+        ROSTER_CACHE_KEY,
+        JSON.stringify({
+          savedAt: Date.now(),
+          students: res.students
+        })
+      );
+    } catch (error) {
+      console.warn('Could not save roster cache:', error);
+    }
+
     document.getElementById('cameraStatus').innerText =
       `Student list ready (${Object.keys(studentCache).length} students)`;
 
@@ -264,7 +330,6 @@ async function preloadStudentRoster() {
     return false;
   }
 }
-
     
 async function handleLoginSubmit() {
   const passwordInput = document.getElementById('loginPassword');
@@ -459,29 +524,30 @@ async function refreshAttendanceSummary() {
     attendanceSummaryLoading = false;
   }
 }
-    async function showAppUI(role) {
+   async function showAppUI(role) {
   document.getElementById('loginCard').classList.add('hidden');
   document.getElementById('appSection').classList.remove('hidden');
+
   document.getElementById('userRoleBadge').innerText =
     `Session: ${role}`;
 
+  // Load the roster (normally from the saved cache when returning).
   await preloadStudentRoster();
 
-// Load attendance figures when the scanner page opens.
-await refreshAttendanceSummary();
+  // Start the QR scanner without waiting for the dashboard.
+  await startCamera();
 
-// Refresh the dashboard every 30 seconds.
-if (!attendanceRefreshTimer) {
-  attendanceRefreshTimer = setInterval(
-    refreshAttendanceSummary,
-    30000
-  );
+  // Refresh attendance figures in the background.
+  refreshAttendanceSummary();
+
+  // Continue refreshing every 30 seconds.
+  if (!attendanceRefreshTimer) {
+    attendanceRefreshTimer = setInterval(
+      refreshAttendanceSummary,
+      30000
+    );
+  }
 }
-
-// Start the QR scanner as before.
-await startCamera();
-}
-
     
 async function logout() {
   await logoutApi();
