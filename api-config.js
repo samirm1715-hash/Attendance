@@ -43,6 +43,10 @@ async function getClassesApi() {
   return sendSecureRequest("getClasses", {});
 }
 
+async function getAttendanceSummaryApi() {
+  return sendSecureRequest('getAttendanceSummary', {});
+}
+
 async function logoutApi() {
   try {
     return await sendSecureRequest("logout", {});
