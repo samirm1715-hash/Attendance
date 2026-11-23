@@ -101,41 +101,58 @@
     }
 
     // Unified getClassColor matching your exact rules (with Part 1C -> Black)
-    function getClassColor(className) {
-      if (!className) return '#5f6368';
-      
-      const name = String(className).toLowerCase().replace(/[^a-z0-9\+\-\s]/g, '').trim();
+    
+function getClassColor(className) {
+  if (!className) return '#5f6368';
 
-      if (name.includes('1c') || name.includes('12+') || name.includes('part 1 c')) {
-        return '#000000'; // Black
-      } 
-      if (name.includes('part 1b') || name.includes('7+')) {
-        return '#ff69b4'; // Pink
-      } 
-      if (name.includes('part 1a') || name.includes('4-6') || name.includes('4 - 6')) {
-        return '#d93025'; // Red
-      } 
-      if (name.includes('part 1 below 4') || name.includes('4 below')) {
-  return '#1a73e8'; // Blue
-      }
-      if (name.includes('part 2')) {
-        return '#ff8c00'; // Orange
-      } 
-      if (name.includes('part 3')) {
-        return '#800080'; // Purple
-      } 
-      if (name.includes('part 4') || name.includes('part 5') || name.includes('4-5') || name.includes('4 - 5')) {
-        return '#0d652d'; // Green
-      } 
-      if (name.includes('part 6')) {
-        return '#fbbc04'; // Yellow
-      } 
-      if (name.includes('pronunciation') || name.includes('pronunciation')) {
-        return '#8b4513'; // Brown
-      }
-      
-      return '#5f6368';
-    }
+  const name = String(className)
+    .toLowerCase()
+    .replace(/[^a-z0-9\+\-\s]/g, '')
+    .trim();
+
+  if (name.includes('1c') || name.includes('12+') || name.includes('part 1 c')) {
+    return '#000000'; // Black
+  }
+
+  if (name.includes('part 1b') || name.includes('7+')) {
+    return '#ff69b4'; // Pink
+  }
+
+  if (name.includes('part 1d')) {
+    return '#800000'; // Dark maroon
+  }
+
+  if (name.includes('part 1a')) {
+    return '#FF1744'; // Bright crimson
+  }
+
+  if (name.includes('part 1 below 4') || name.includes('4 below')) {
+    return '#1a73e8'; // Blue
+  }
+
+  if (name.includes('part 2')) {
+    return '#ff8c00'; // Orange
+  }
+
+  if (name.includes('part 3')) {
+    return '#800080'; // Purple
+  }
+
+  if (name.includes('part 4') || name.includes('part 5') ||
+      name.includes('4-5') || name.includes('4 - 5')) {
+    return '#0d652d'; // Green
+  }
+
+  if (name.includes('part 6')) {
+    return '#fbbc04'; // Yellow
+  }
+
+  if (name.includes('pronunciation')) {
+    return '#8b4513'; // Brown
+  }
+
+  return '#5f6368';
+}
 
     async function loadStudentRoster() {
       try {
